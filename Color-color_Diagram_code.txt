@@ -1,0 +1,243 @@
+
+
+    import pandas as pd
+    pd.options.mode.chained_assignment = None  # default = 'warn'
+
+    import os
+    import sqldf
+
+    from PIL import Image
+    import matplotlib.pyplot as plt
+    from matplotlib.ticker import PercentFormatter
+    import matplotlib.ticker as mtick
+    import numpy as np
+    import seaborn as sns  # for nicer graphics
+
+    # os.getcwd()
+
+    # pip install sqldf
+
+    # import dataframes from local .csv files
+
+    def read_data(file_string):
+        
+        mac = True # change when needed
+        
+        if 'VOID' in file_string: folder = 'Voids'
+        else: folder = 'Walls'
+        
+        if(mac):
+            file = pd.read_csv('/Users/anisharadhey/Dropbox/AstroSummer22/Data/'
+                               + folder + '/' + file_string + '.csv')
+        else:
+            file = pd.read_csv('\\Users\\smara\\Dropbox\\AstroSummer22\\Data\\Walls\\'
+                               + folder + '\\' + file_string + '.csv')
+        return(file)
+
+    voids_10arc = read_data('10arcsec_VOIDS_results')
+    walls_10arc = read_data('10arcsec_WALLS_results')
+
+    voids_6arc = read_data('6arcsec_VOIDS_results')
+    walls_6arc = read_data('6arcsec_WALLS_results')
+
+    # voids_df
+
+    # filter out rows where no WISE object was found
+
+    def filter_rows(data):
+        
+        data_filtered = data.dropna(subset = ['ra', 'dec'])
+        
+        data_filtered = data_filtered[(data_filtered['w1snr'] >= 3) &
+                                      (data_filtered['w2snr'] >= 3) &
+                                      (data_filtered['w3snr'] >= 3) &
+                                      (data_filtered['w4snr'] >= 3)]
+        return(data_filtered)
+                    
+    voids_10arc_filt = filter_rows(voids_10arc)
+    walls_10arc_filt = filter_rows(walls_10arc)
+
+    voids_6arc_filt = filter_rows(voids_6arc)
+    walls_6arc_filt = filter_rows(walls_6arc) 
+
+    # # find percentage of lost rows
+    # print((len(voids_10arc_filt) - len(voids_6arc_filt)) / len(voids_10arc),
+    #       (len(walls_10arc_filt) - len(walls_6arc_filt)) / len(walls_10arc)) # unequal between 6arc and 10 arc!
+
+    # voids_filtered.min()
+
+    # make new columns for colors (base)
+
+    # voids_filtered.columns
+
+    voids_filtered = voids_6arc_filt
+    walls_filtered = walls_6arc_filt
+
+    voids_colors = voids_filtered
+
+    voids_colors['W1-W2'] = voids_filtered.w1mpro - voids_filtered.w2mpro
+    mean_voids_12 = voids_colors['W1-W2'].mean()
+    std_voids_12 = np.std(voids_colors['W1-W2'])
+
+    voids_colors['W2-W3'] = voids_filtered.w2mpro - voids_filtered.w3mpro
+    mean_voids_23 = voids_colors['W2-W3'].mean()
+    std_voids_23 = np.std(voids_colors['W2-W3'])
+
+    walls_colors = walls_filtered
+
+    walls_colors['W1-W2'] = walls_filtered.w1mpro - walls_filtered.w2mpro
+    mean_walls_12 = walls_colors['W1-W2'].mean()
+    std_walls_12 = np.std(walls_colors['W1-W2'])
+
+    walls_colors['W2-W3'] = walls_filtered.w2mpro - walls_filtered.w3mpro
+    mean_walls_23 = walls_colors['W2-W3'].mean()
+    std_walls_23 = np.std(walls_colors['W2-W3'])
+
+    # print(std_voids_12)
+    # print(std_voids_23)
+    # print(std_walls_12)
+    # print(std_walls_23)
+
+    # plot color-color diagram!
+
+    fig, axs = plt.subplots(2, 2, 
+                            sharex = 'col', 
+                            sharey = 'row',
+                            figsize=(10, 10), 
+                            gridspec_kw= {'height_ratios': [1, 2],
+                                         'width_ratios': [2, 1]} )
+
+    plt.subplots_adjust(wspace = 0, hspace = 0)
+
+    fig.suptitle('Color–color diagram showing void and wall galaxies', fontsize = 'x-large')
+
+    axs[0, 0].set_title('Color distribution', fontsize = 'large')
+
+    axs[1, 0].scatter(walls_colors['W2-W3'], 
+                      walls_colors['W1-W2'], 
+                      s = 45, 
+                      c = 'dimgray',
+                      marker = "o", 
+                      label = 'walls',
+                      alpha = 0.3)
+
+    axs[1, 0].scatter(voids_colors['W2-W3'], 
+                      voids_colors['W1-W2'], 
+                      s = 45,
+                      c = 'blue',
+                      marker = "^", # change symbol
+                      label = 'void',
+                      alpha = 0.4)
+
+    axs[1, 0].set_ylim([-0.5, 2.4])
+    axs[1, 0].set_xlim([-0.5, 6.9])
+
+    axs[0, 0].set_ylim([0, 0.7])
+    axs[1, 1].set_xlim([0, 1])
+
+    axs[0, 0].yaxis.set_major_formatter(mtick.PercentFormatter())
+    axs[1, 1].xaxis.set_major_formatter(mtick.PercentFormatter())
+
+    for ax in axs.flat:
+        ax.label_outer()
+
+    axs[0, 0].hist(walls_colors['W2-W3'], 
+                   color = "dimgray",
+                   weights = np.ones_like(walls_colors['W2-W3']) / len(walls_colors['W2-W3']),
+                   alpha = 0.3)
+
+    axs[0, 0].hist(voids_colors['W2-W3'],
+                   color = "blue",
+                   linewidth = 1.2,
+                   weights = np.ones_like(voids_colors['W2-W3']) / len(voids_colors['W2-W3']),
+                   alpha = 0.4)
+
+    axs[0, 0].axvline(x = mean_walls_23, color = 'dimgrey')
+    axs[0, 0].axvline(x = mean_walls_23 - std_walls_23, linestyle = 'dotted', color = 'dimgrey')
+    axs[0, 0].axvline(x = mean_walls_23 + std_walls_23, linestyle = 'dotted', color = 'dimgrey')
+
+    axs[0, 0].axvline(x = mean_voids_23, color = 'blue')
+    axs[0, 0].axvline(x = mean_voids_23 - std_voids_23, linestyle = 'dotted', color = 'blue')
+    axs[0, 0].axvline(x = mean_voids_23 + std_voids_23, linestyle = 'dotted', color = 'blue')
+
+
+    axs[1, 1].hist(walls_colors['W1-W2'],
+                   color = "dimgray", 
+                   orientation='horizontal',
+                   weights = np.ones_like(walls_colors['W1-W2']) / len(walls_colors['W1-W2']),
+                   alpha = 0.3)
+
+    axs[1, 1].hist(voids_colors['W1-W2'], 
+                   color = "blue", 
+                   orientation='horizontal',
+                   weights = np.ones_like(voids_colors['W1-W2']) / len(voids_colors['W1-W2']),
+                   alpha = 0.4)
+
+    axs[1, 1].axhline(y = mean_walls_12, color = 'dimgrey', label = 'mean wall')
+    axs[1, 1].axhline(y = mean_walls_12 - std_walls_12, linestyle = 'dotted', color = 'dimgrey', 
+                      label = 'mean wall ± std')
+    axs[1, 1].axhline(y = mean_walls_12 + std_walls_12, linestyle = 'dotted', color = 'dimgrey')
+
+    axs[1, 1].axhline(y = mean_voids_12, color = 'blue', label = 'mean void')
+    axs[1, 1].axhline(y = mean_voids_12 - std_voids_12, linestyle = 'dotted', color = 'blue', 
+                      label = 'mean voids ± std')
+    axs[1, 1].axhline(y = mean_voids_12 + std_voids_12, linestyle = 'dotted', color = 'blue')
+
+    axs[1, 0].axhline(y = 0.8, color = 'palegreen', linestyle = 'dashdot', linewidth = 2, label = 'Stern et al.')
+    axs[1, 0].axhline(y = 0.5, color = 'palegreen', linestyle = 'dashdot', linewidth = 2)
+
+    axs[0, 1].set_axis_off()
+
+    axs[1, 0].set_xlabel('W2 - W3', fontsize = 'large')
+    axs[1, 0].set_ylabel('W1 - W2', fontsize = 'large')
+
+    axs[0, 0].set_ylabel('ΔN / Ntotal', fontsize = 'large')
+    axs[1, 1].set_xlabel('ΔN / Ntotal', fontsize = 'large')
+
+    xp1 = np.linspace(1.958, 6.9, 100)
+    xp2 = np.linspace(2.25, 6.9, 100) # ~ 2.157 (Mateos et al.)
+    xp3 = np.linspace(1.958, 2.25, 100)
+
+    yp1 = (0.315 * xp1) + 0.796
+    yp2 = (0.315 * xp2) - 0.222
+    yp3 = (-3.172 * xp3) + 7.624
+
+    axs[1, 0].plot(xp1, yp1, color = "violet", linestyle = "dashed", linewidth = 2, label = "Mateos et al.")
+    axs[1, 0].plot(xp2, yp2, color = "violet", linestyle = "dashed", linewidth = 2)
+    axs[1, 0].plot(xp3, yp3, color = "violet", linestyle = "dashed", linewidth = 2)
+
+    axs[1, 0].legend(loc = 'upper right')
+    axs[1, 1].legend(loc = 'upper right')
+
+    plt.show()
+    fig.savefig('color-color-6arc.pdf', dpi = 300)
+
+[]
+
+    img = Image.open('color-color-6arc.png')
+    img_gray = img.convert('L')
+    img_gray.save('BW-color-color-6arc.pdf')
+
+    img_gray
+
+[]
+
+    voids_percent_point80 = len(voids_colors[(voids_colors['W1-W2'] >= 0.8)]) / len(voids_colors) * 100
+    voids_percent_point50 = len(voids_colors[(voids_colors['W1-W2'] >= 0.5)]) / len(voids_colors) * 100
+    # TODO: voids_percent_wedge = 
+
+    walls_percent_point80 = len(walls_colors[(walls_colors['W1-W2'] >= 0.8)]) / len(walls_colors) * 100
+    walls_percent_point50 = len(walls_colors[(walls_colors['W1-W2'] >= 0.5)]) / len(walls_colors) * 100
+    # TODO: walls_percent_wedge = 
+
+    percent_table = pd.DataFrame([['Voids', round(voids_percent_point50, 2), round(voids_percent_point80, 2)],
+                                  ['Walls', round(walls_percent_point50, 2), round(walls_percent_point80, 2)]],
+                                 columns = ['Galaxy', 'Percent with W1 - W2 ≥ 0.5', 'Percent with W1 - W2 ≥ 0.8'])
+
+    percent_table
+
+    # percent_point8
+
+      Galaxy  Percent with W1 - W2 ≥ 0.5  Percent with W1 - W2 ≥ 0.8
+    0  Voids                        2.95                         0.9
+    1  Walls                        3.67                         1.1
